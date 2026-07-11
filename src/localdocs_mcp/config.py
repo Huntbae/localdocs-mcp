@@ -17,14 +17,16 @@ EMBED_TIMEOUT = float(os.environ.get("LOCALDOCS_EMBED_TIMEOUT", "120"))
 CHUNK_MAX_CHARS = int(os.environ.get("LOCALDOCS_CHUNK_MAX_CHARS", "1200"))
 CHUNK_OVERLAP_CHARS = int(os.environ.get("LOCALDOCS_CHUNK_OVERLAP", "150"))
 
+# 이미지(OCR 대상) 확장자 — 문서와 분리해 별도 단계로 인덱싱할 수 있게 한다
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"}
+
 # 인덱싱 대상 확장자
 INDEXABLE_SUFFIXES = {
     ".txt", ".md", ".markdown", ".csv", ".log", ".json", ".rtf",
     ".pdf",
     ".docx", ".pptx", ".xlsx", ".doc",
     ".hwp", ".hwpx",
-    ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff",
-}
+} | IMAGE_SUFFIXES
 
 # 인덱싱에서 제외할 디렉토리 이름
 SKIP_DIR_NAMES = {

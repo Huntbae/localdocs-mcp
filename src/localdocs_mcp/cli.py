@@ -34,6 +34,15 @@ def main(argv: list[str] | None = None) -> int:
     p_index.add_argument("paths", nargs="+", help="인덱싱할 파일 또는 폴더")
     p_index.add_argument("--force", action="store_true", help="변경 여부와 무관하게 재인덱싱")
     p_index.add_argument("--no-embed", action="store_true", help="임베딩 단계 생략(BM25만)")
+    grp = p_index.add_mutually_exclusive_group()
+    grp.add_argument("--no-images", action="store_true",
+                     help="이미지(OCR) 제외, 문서만 인덱싱 — 빠름")
+    grp.add_argument("--only-images", action="store_true",
+                     help="이미지(OCR)만 인덱싱 — 문서 인덱싱 후 별도 실행용")
+    grp.add_argument("--only-ext", nargs="+", metavar="EXT",
+                     help="지정 확장자만 인덱싱 (예: --only-ext .hwp .pdf)")
+    p_index.add_argument("--skip-ext", nargs="+", metavar="EXT",
+                         help="지정 확장자 제외 (예: --skip-ext .xlsx)")
 
     p_embed = sub.add_parser("embed", help="임베딩 누락 청크 백필(Ollama 필요)")
 
@@ -58,8 +67,18 @@ def main(argv: list[str] | None = None) -> int:
     store = Store(config.DB_PATH)
     try:
         if args.command == "index":
+            only = skip = None
+            if args.only_images:
+                only = set(config.IMAGE_SUFFIXES)
+            elif args.only_ext:
+                only = {e if e.startswith(".") else f".{e}" for e in args.only_ext}
+            if args.no_images:
+                skip = set(config.IMAGE_SUFFIXES)
+            if args.skip_ext:
+                s = {e if e.startswith(".") else f".{e}" for e in args.skip_ext}
+                skip = (skip or set()) | s
             report = index_paths(store, [Path(p) for p in args.paths],
-                                 force=args.force)
+                                 force=args.force, only=only, skip=skip)
             out = {"index": report.as_dict()}
             if not args.no_embed:
                 out["embedding"] = embed_pending(store)

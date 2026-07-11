@@ -115,6 +115,33 @@ def test_error_files_are_recorded(sample_dir, tmp_path):
     assert errs[0]["error"]
 
 
+def test_index_skip_and_only_filters(sample_dir, tmp_path):
+    # 이미지 없는 샘플이므로 확장자 필터 동작만 검증
+    store = _store(tmp_path / "a")
+    r = index_paths(store, [sample_dir], skip={".hwpx"})
+    assert store.list_files(prefix=str(sample_dir))
+    assert not any(f["path"].endswith(".hwpx") for f in store.list_files())
+    assert r.indexed == 4  # hwpx 제외
+
+    store2 = _store(tmp_path / "b")
+    index_paths(store2, [sample_dir], only={".pdf", ".hwpx"})
+    files = store2.list_files()
+    assert len(files) == 1 and files[0]["path"].endswith(".hwpx")
+
+
+def test_iter_indexable_prunes_hidden_and_skip_dirs(tmp_path):
+    from localdocs_mcp.indexer import iter_indexable
+    (tmp_path / "keep").mkdir()
+    (tmp_path / "keep" / "a.txt").write_text("x", encoding="utf-8")
+    (tmp_path / ".hidden").mkdir()
+    (tmp_path / ".hidden" / "b.txt").write_text("x", encoding="utf-8")
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / "c.txt").write_text("x", encoding="utf-8")
+    (tmp_path / ".secret.txt").write_text("x", encoding="utf-8")
+    found = {p.name for p in iter_indexable(tmp_path)}
+    assert found == {"a.txt"}
+
+
 def test_get_chunk_context(tmp_path):
     store = _store(tmp_path)
     ids = store.replace_file(
