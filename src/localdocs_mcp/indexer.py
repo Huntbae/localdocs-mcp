@@ -133,6 +133,34 @@ def index_paths(store: Store, roots: list[Path], force: bool = False,
     return report
 
 
+def retry_errors(store: Store, progress_every: int = 25) -> IndexReport:
+    """현재 error 상태인 파일만 강제로 재인덱싱한다.
+
+    추출기/청커 버그 수정 후, 전체 코퍼스를 --force로 재처리하지 않고
+    실패분만 효율적으로 되살리기 위한 경로. 디스크에서 사라진 파일은 정리한다.
+    """
+    report = IndexReport()
+    error_paths = [f["path"] for f in store.list_files(status="error", limit=10**9)]
+    for i, p in enumerate(error_paths, start=1):
+        path = Path(p)
+        if not path.exists():
+            store.delete_file(p)
+            report.skipped += 1
+            continue
+        result = index_file(store, path, force=True)
+        if result == "indexed":
+            report.indexed += 1
+        elif result == "error":
+            report.errors += 1
+            report.error_files.append(p)
+        else:
+            report.skipped += 1
+        if progress_every and i % progress_every == 0:
+            log.info("실패 재시도: %d/%d (복구=%d 여전히실패=%d)",
+                     i, len(error_paths), report.indexed, report.errors)
+    return report
+
+
 def prune_deleted(store: Store) -> int:
     """디스크에서 사라진 파일을 인덱스에서 제거."""
     removed = 0

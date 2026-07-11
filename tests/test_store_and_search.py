@@ -18,6 +18,21 @@ def test_chunker_respects_max_and_overlap():
     assert len(chunks) > 3
 
 
+def test_chunker_splits_long_single_paragraph():
+    # 문단 하나가 max_chars를 크게 초과하는 경우 _split_long 경로를 탄다.
+    # (가변 길이 lookbehind 정규식 회귀 방지 — 실제 한국어 문장 종결 포함)
+    long_para = " ".join(f"이것은 {i}번째 문장입니다. 내용을 채운다." for i in range(200))
+    chunks = chunk_segments([(long_para, {})], max_chars=400, overlap=50)
+    assert len(chunks) > 5
+    assert all(len(c) <= 400 + 60 for c, _ in chunks)
+
+    # 문장 부호도 공백도 없는 초장문(CJK 연속)도 강제 분할된다.
+    no_break = "가" * 5000
+    chunks2 = chunk_segments([(no_break, {})], max_chars=400, overlap=0)
+    assert all(len(c) <= 400 for c, _ in chunks2)
+    assert sum(len(c) for c, _ in chunks2) == 5000
+
+
 def test_fts_search_korean(tmp_path):
     store = _store(tmp_path)
     store.replace_file("/a.txt", 1.0, 10,
@@ -101,6 +116,23 @@ def test_indexer_end_to_end(sample_dir, tmp_path):
     removed = prune_deleted(store)
     assert removed == 1
     assert store.search_fts("배터리") == []
+
+
+def test_retry_errors_recovers_fixed_files(sample_dir, tmp_path):
+    from localdocs_mcp.indexer import retry_errors
+    store = _store(tmp_path)
+    bad = sample_dir / "깨진문서.hwpx"
+    bad.write_bytes(b"not a zip")
+    index_paths(store, [sample_dir])
+    assert len(store.list_files(status="error")) == 1
+
+    # 내용을 정상 hwpx로 교체 후 retry-errors 하면 복구된다
+    from tests.conftest import make_hwpx
+    make_hwpx(bad, [["복구된 본문입니다"]])
+    report = retry_errors(store)
+    assert report.indexed == 1
+    assert store.list_files(status="error") == []
+    assert store.search_fts("복구된")
 
 
 def test_error_files_are_recorded(sample_dir, tmp_path):

@@ -13,7 +13,7 @@ from pathlib import Path
 
 from . import config
 from .embeddings import OllamaEmbedder
-from .indexer import embed_pending, index_paths, prune_deleted
+from .indexer import embed_pending, index_paths, prune_deleted, retry_errors
 from .search import hybrid_search
 from .store import Store
 
@@ -54,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("status", help="인덱스 통계 출력")
     sub.add_parser("prune", help="삭제된 파일을 인덱스에서 제거")
+    sub.add_parser("retry-errors", help="실패(error) 파일만 재인덱싱")
     sub.add_parser("serve", help="MCP 서버 실행(stdio)")
 
     args = parser.parse_args(argv)
@@ -99,6 +100,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "prune":
             _print({"removed": prune_deleted(store)})
+            return 0
+        if args.command == "retry-errors":
+            _print(retry_errors(store).as_dict())
             return 0
     finally:
         store.close()
