@@ -50,9 +50,15 @@ def remote_ok(remote: str) -> bool:
 
 
 def local_to_remote(local_path: str, local_root: str, remote: str) -> str:
-    """로컬 마운트 경로를 rclone 원격 경로로 변환."""
+    """로컬 마운트 경로를 rclone 원격 경로로 변환.
+
+    macOS 파일시스템은 한글을 NFD(자모 분리)로 저장하지만 Google Drive는
+    NFC(완성형)로 저장하므로, rclone이 파일을 찾도록 경로를 NFC로 정규화한다.
+    (미정규화 시 한글 이름 파일에서 rclone이 'not found'로 실패한다.)
+    """
     rel = os.path.relpath(local_path, local_root)
-    return remote.rstrip("/") + "/" + rel if not remote.endswith(":") else remote + rel
+    joined = remote + rel if remote.endswith(":") else remote.rstrip("/") + "/" + rel
+    return unicodedata.normalize("NFC", joined)
 
 
 def _is_sensitive(name: str) -> bool:

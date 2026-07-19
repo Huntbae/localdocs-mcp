@@ -14,6 +14,17 @@ def test_local_to_remote_path_remote():
     assert local_to_remote(p, root, "gdrive:sub") == "gdrive:sub/a/b.docx"
 
 
+def test_local_to_remote_normalizes_nfd_to_nfc():
+    import unicodedata
+    root = "/mnt/gd/내 드라이브"
+    # macOS FS가 주는 NFD(자모 분리) 경로
+    nfd = unicodedata.normalize("NFD", root + "/클랜헌트/사업계획.pdf")
+    out = local_to_remote(nfd, unicodedata.normalize("NFD", root), "gdrive:")
+    # 결과는 NFC 완성형이어야 rclone/Drive가 파일을 찾는다
+    assert out == unicodedata.normalize("NFC", "gdrive:클랜헌트/사업계획.pdf")
+    assert unicodedata.is_normalized("NFC", out)
+
+
 def test_sensitive_detection():
     assert _is_sensitive("github-recovery-codes.txt")
     assert _is_sensitive("id_rsa")
