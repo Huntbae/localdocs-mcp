@@ -57,6 +57,11 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _safe_text(text: str) -> str:
+    """UTF-8로 인코딩 불가한 문자(짝 없는 서로게이트 등)를 제거해 저장 오류를 막는다."""
+    return text.encode("utf-8", "ignore").decode("utf-8")
+
+
 def vec_to_blob(vec: list[float]) -> bytes:
     return struct.pack(f"{len(vec)}f", *vec)
 
@@ -142,6 +147,7 @@ class Store:
                 file_id = cur.lastrowid
             chunk_ids: list[int] = []
             for seq, (text, meta) in enumerate(chunks):
+                text = _safe_text(text)  # 낱개 서로게이트 등 UTF-8 불가 문자 제거
                 cur.execute(
                     "INSERT INTO chunks(file_id, seq, text, meta) VALUES(?,?,?,?)",
                     (file_id, seq, text, json.dumps(meta, ensure_ascii=False)),

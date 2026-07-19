@@ -32,8 +32,22 @@ def _decode_para_text(payload: bytes) -> str:
     while i < n:
         (code,) = struct.unpack_from("<H", payload, i * 2)
         if code >= 32:
-            out.append(chr(code))
-            i += 1
+            # UTF-16 서로게이트 쌍(BMP 밖 문자)을 결합. 낱개(짝 없는)
+            # 서로게이트는 UTF-8 인코딩 불가라 건너뛴다.
+            if 0xD800 <= code <= 0xDBFF:
+                if i + 1 < n:
+                    (lo,) = struct.unpack_from("<H", payload, (i + 1) * 2)
+                    if 0xDC00 <= lo <= 0xDFFF:
+                        cp = 0x10000 + ((code - 0xD800) << 10) + (lo - 0xDC00)
+                        out.append(chr(cp))
+                        i += 2
+                        continue
+                i += 1  # 짝 없는 상위 서로게이트 → 폐기
+            elif 0xDC00 <= code <= 0xDFFF:
+                i += 1  # 짝 없는 하위 서로게이트 → 폐기
+            else:
+                out.append(chr(code))
+                i += 1
         elif code in (10, 13):
             out.append("\n")
             i += 1

@@ -63,3 +63,24 @@ def test_hwp_compressed_stream_decodes():
     restored = zlib.decompress(compressed, -15)
     records = list(hwp._iter_records(restored))
     assert hwp._decode_para_text(records[0][1]) == "압축 본문"
+
+
+def test_hwp_surrogate_pair_combines():
+    import struct
+    from localdocs_mcp.extractors import hwp
+    # BMP 밖 문자(U+1F600)를 UTF-16LE 서로게이트 쌍으로
+    emoji = "가😀나"
+    payload = emoji.encode("utf-16-le")
+    out = hwp._decode_para_text(payload)
+    assert out == "가😀나"
+    out.encode("utf-8")  # 인코딩 가능해야 함(예외 없음)
+
+
+def test_hwp_lone_surrogate_dropped():
+    import struct
+    from localdocs_mcp.extractors import hwp
+    # 짝 없는 상위 서로게이트(0xD83D) → 폐기되어야 함
+    payload = "가".encode("utf-16-le") + struct.pack("<H", 0xD83D) + "나".encode("utf-16-le")
+    out = hwp._decode_para_text(payload)
+    assert out == "가나"
+    out.encode("utf-8")
