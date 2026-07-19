@@ -55,6 +55,15 @@ def main(argv: list[str] | None = None) -> int:
     p_search.add_argument("--path-prefix")
     p_search.add_argument("--suffix")
 
+    p_gd = sub.add_parser("gdrive-recover",
+                          help="rclone로 Google Drive에서 실패 파일을 자립형 복구(세션 한도 무관)")
+    p_gd.add_argument("--remote", required=True,
+                      help="rclone 원격 (예: gdrive:) — '내 드라이브' 루트를 가리켜야 함")
+    p_gd.add_argument("--local-root", required=True,
+                      help="원격 루트에 대응하는 로컬 마운트 경로 (예: '.../GoogleDrive-<메일>/내 드라이브')")
+    p_gd.add_argument("--timeout", type=float, default=300.0, help="파일당 다운로드 제한(초)")
+    p_gd.add_argument("--no-embed", action="store_true", help="임베딩 단계 생략")
+
     sub.add_parser("status", help="인덱스 통계 출력")
     sub.add_parser("prune", help="삭제된 파일을 인덱스에서 제거")
     sub.add_parser("retry-errors", help="실패(error) 파일만 재인덱싱")
@@ -107,6 +116,22 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "retry-errors":
             _print(retry_errors(store).as_dict())
+            return 0
+        if args.command == "gdrive-recover":
+            from .gdrive import recover_errors, rclone_available, remote_ok
+            if not rclone_available():
+                _print({"error": "rclone 미설치 — 'brew install rclone' 후 'rclone config'로 "
+                                  "Google Drive 원격을 설정하세요."})
+                return 1
+            if not remote_ok(args.remote):
+                _print({"error": f"원격 '{args.remote}' 접근 불가 — 'rclone config'로 인증했는지, "
+                                 f"원격 이름이 맞는지 확인하세요."})
+                return 1
+            report = recover_errors(store, args.remote, args.local_root, timeout=args.timeout)
+            out = {"gdrive_recover": report.as_dict()}
+            if not args.no_embed:
+                out["embedding"] = embed_pending(store)
+            _print(out)
             return 0
     finally:
         store.close()
