@@ -43,6 +43,9 @@ def main(argv: list[str] | None = None) -> int:
                      help="지정 확장자만 인덱싱 (예: --only-ext .hwp .pdf)")
     p_index.add_argument("--skip-ext", nargs="+", metavar="EXT",
                          help="지정 확장자 제외 (예: --skip-ext .xlsx)")
+    p_index.add_argument("--exclude", nargs="+", metavar="STR",
+                         help="경로에 이 문자열이 포함된 파일/폴더 제외 "
+                              "(예: --exclude legalize-data node_modules)")
 
     p_embed = sub.add_parser("embed", help="임베딩 누락 청크 백필(Ollama 필요)")
 
@@ -79,7 +82,8 @@ def main(argv: list[str] | None = None) -> int:
                 s = {e if e.startswith(".") else f".{e}" for e in args.skip_ext}
                 skip = (skip or set()) | s
             report = index_paths(store, [Path(p) for p in args.paths],
-                                 force=args.force, only=only, skip=skip)
+                                 force=args.force, only=only, skip=skip,
+                                 exclude=args.exclude)
             out = {"index": report.as_dict()}
             if not args.no_embed:
                 out["embedding"] = embed_pending(store)

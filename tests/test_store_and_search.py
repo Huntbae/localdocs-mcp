@@ -161,6 +161,18 @@ def test_index_skip_and_only_filters(sample_dir, tmp_path):
     assert len(files) == 1 and files[0]["path"].endswith(".hwpx")
 
 
+def test_iter_indexable_exclude_paths(tmp_path):
+    from localdocs_mcp.indexer import iter_indexable
+    (tmp_path / "keep").mkdir()
+    (tmp_path / "keep" / "a.txt").write_text("x", encoding="utf-8")
+    (tmp_path / "bigdata").mkdir()
+    (tmp_path / "bigdata" / "b.txt").write_text("x", encoding="utf-8")
+    (tmp_path / "bigdata" / "sub").mkdir()
+    (tmp_path / "bigdata" / "sub" / "c.txt").write_text("x", encoding="utf-8")
+    found = {p.name for p in iter_indexable(tmp_path, exclude=["bigdata"])}
+    assert found == {"a.txt"}
+
+
 def test_iter_indexable_prunes_hidden_and_skip_dirs(tmp_path):
     from localdocs_mcp.indexer import iter_indexable
     (tmp_path / "keep").mkdir()

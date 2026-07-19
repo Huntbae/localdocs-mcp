@@ -48,31 +48,43 @@ def _allowed_suffixes(only: set[str] | None, skip: set[str] | None) -> set[str]:
 
 
 def iter_indexable(root: Path, only: set[str] | None = None,
-                   skip: set[str] | None = None):
+                   skip: set[str] | None = None,
+                   exclude: list[str] | None = None):
     """인덱싱 대상 파일을 디렉터리 단위로 점진적으로 내보낸다.
 
     os.walk로 순회하며 제외 대상 폴더는 진입 전에 가지치기한다. 전체 목록을
     한 번에 만들지 않으므로(rglob+sort 회피) 대용량 트리·네트워크 마운트(예:
     구글 드라이브 스트리밍)에서도 첫 디렉터리부터 즉시 인덱싱이 시작되고
     메모리 사용이 일정하게 유지된다. only/skip으로 확장자를 제한해 문서와
-    이미지(OCR)를 분리된 단계로 인덱싱할 수 있다.
+    이미지(OCR)를 분리된 단계로 인덱싱할 수 있다. exclude는 경로에 해당
+    문자열이 포함된 파일/폴더를 통째로 건너뛴다(예: 별도로 관리하는 대형
+    데이터셋 폴더를 개인 인덱스에서 제외).
     """
     allowed = _allowed_suffixes(only, skip)
+    exclude = exclude or []
+
+    def is_excluded(p: str) -> bool:
+        return any(x in p for x in exclude)
+
     if root.is_file():
-        if root.suffix.lower() in allowed:
+        if root.suffix.lower() in allowed and not is_excluded(str(root)):
             yield root
         return
     for dirpath, dirnames, filenames in os.walk(root):
-        # 하위 순회 전에 제외 폴더를 가지치기(dotdir, node_modules 등)
+        if is_excluded(dirpath):
+            dirnames[:] = []  # 제외 폴더는 하위로 진입하지 않음
+            continue
+        # 하위 순회 전에 제외 폴더를 가지치기(dotdir, node_modules, exclude 등)
         dirnames[:] = sorted(
             d for d in dirnames
             if d not in config.SKIP_DIR_NAMES and not d.startswith(".")
+            and not is_excluded(os.path.join(dirpath, d))
         )
         for name in sorted(filenames):
             if name.startswith("."):
                 continue
             p = Path(dirpath) / name
-            if p.suffix.lower() in allowed:
+            if p.suffix.lower() in allowed and not is_excluded(str(p)):
                 yield p
 
 
@@ -105,7 +117,8 @@ def index_file(store: Store, path: Path, force: bool = False) -> str:
 
 def index_paths(store: Store, roots: list[Path], force: bool = False,
                 progress_every: int = 25, only: set[str] | None = None,
-                skip: set[str] | None = None) -> IndexReport:
+                skip: set[str] | None = None,
+                exclude: list[str] | None = None) -> IndexReport:
     report = IndexReport()
     for root in roots:
         root = root.expanduser().resolve()
@@ -113,7 +126,7 @@ def index_paths(store: Store, roots: list[Path], force: bool = False,
             report.errors += 1
             report.error_files.append(f"{root} (존재하지 않음)")
             continue
-        for path in iter_indexable(root, only=only, skip=skip):
+        for path in iter_indexable(root, only=only, skip=skip, exclude=exclude):
             result = index_file(store, path, force=force)
             if result == "indexed":
                 report.indexed += 1
