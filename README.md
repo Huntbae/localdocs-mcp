@@ -22,9 +22,21 @@
 
 ## 설치
 
+**원커맨드(macOS)** — uv·의존성·Ollama·모델·Claude 등록까지 자동:
+
 ```bash
 git clone https://github.com/Huntbae/localdocs-mcp.git
 cd localdocs-mcp
+./install.sh                 # 표준(문서 + 시맨틱 검색)
+# ./install.sh --with-ocr    # 이미지 OCR 포함
+# ./install.sh --no-ollama   # 키워드(BM25)만
+```
+
+전체 설치·사용·두 번째 기기(맥북프로) 설치·트러블슈팅은 **[docs/INSTALL.ko.md](docs/INSTALL.ko.md)** 참고.
+
+수동 설치:
+
+```bash
 uv venv --python 3.11 && uv pip install -e .
 
 # 선택: 이미지 OCR (easyocr, 용량 큼)
