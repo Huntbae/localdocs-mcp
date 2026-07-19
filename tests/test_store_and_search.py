@@ -182,6 +182,7 @@ def test_iter_indexable_prunes_hidden_and_skip_dirs(tmp_path):
     (tmp_path / "node_modules").mkdir()
     (tmp_path / "node_modules" / "c.txt").write_text("x", encoding="utf-8")
     (tmp_path / ".secret.txt").write_text("x", encoding="utf-8")
+    (tmp_path / "~$lock.docx").write_text("x", encoding="utf-8")  # 오피스 임시파일
     found = {p.name for p in iter_indexable(tmp_path)}
     assert found == {"a.txt"}
 

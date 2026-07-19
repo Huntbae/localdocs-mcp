@@ -81,7 +81,8 @@ def iter_indexable(root: Path, only: set[str] | None = None,
             and not is_excluded(os.path.join(dirpath, d))
         )
         for name in sorted(filenames):
-            if name.startswith("."):
+            # dotfile 및 오피스 임시/잠금 파일(~$...) 제외
+            if name.startswith(".") or name.startswith("~$"):
                 continue
             p = Path(dirpath) / name
             if p.suffix.lower() in allowed and not is_excluded(str(p)):
