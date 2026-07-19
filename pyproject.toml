@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-ocr = ["easyocr>=1.7"]
+ocr = ["easyocr>=1.7", "pymupdf>=1.24"]
 convert = ["markitdown>=0.1.1"]
 dev = ["pytest>=8.0"]
 
