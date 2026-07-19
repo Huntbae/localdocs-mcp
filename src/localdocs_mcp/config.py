@@ -28,6 +28,18 @@ INDEXABLE_SUFFIXES = {
     ".hwp", ".hwpx",
 } | IMAGE_SUFFIXES
 
+# 기본적으로 인덱싱에서 제외할 민감 파일명 패턴(자격증명·키·복구코드 등).
+# 파일명을 소문자화해 부분일치로 검사한다. 개인 문서 인덱서가 자격증명을
+# 검색 가능 인덱스에 넣어 노출시키는 사고를 방지하기 위한 기본 안전장치.
+SENSITIVE_NAME_PATTERNS = [
+    "recovery-code", "recovery_code", "recoverycode",
+    "recovery-key", "recovery_key", "recoverykey",
+    "backup-code", "backup_code", "backupcode",
+    "id_rsa", "private-key", "private_key",
+    "mnemonic", "seed-phrase", "seedphrase",
+    "credentials.json", "secrets.json",
+]
+
 # 인덱싱에서 제외할 디렉토리 이름
 SKIP_DIR_NAMES = {
     ".git", ".svn", "node_modules", "__pycache__", ".venv", "venv",

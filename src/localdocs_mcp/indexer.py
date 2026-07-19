@@ -84,6 +84,10 @@ def iter_indexable(root: Path, only: set[str] | None = None,
             # dotfile 및 오피스 임시/잠금 파일(~$...) 제외
             if name.startswith(".") or name.startswith("~$"):
                 continue
+            lname = name.lower()
+            if any(pat in lname for pat in config.SENSITIVE_NAME_PATTERNS):
+                log.warning("민감 파일 제외(자격증명 의심): %s", name)
+                continue
             p = Path(dirpath) / name
             if p.suffix.lower() in allowed and not is_excluded(str(p)):
                 yield p
